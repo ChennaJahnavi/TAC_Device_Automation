@@ -1,8 +1,9 @@
 from pexpect import pxssh
 import pandas as pd
+from datetime import datetime
 ssh_yang_host = "127.0.0.1"
 yang_port = 2222
-cred = {"username": "ejahnavi", "password": "Pa$$w0rd5pcc02x*c"}
+cred = {"username": "ejahnavi", "password": "Pa$$w0rd5pcc02x*d"}
 yang_timeout=5
 device_group="ACME"
 total_output=[]
@@ -19,6 +20,7 @@ def get_ssh_connection_pexpect_with_port(host: str, ssh_credentials: dict, port=
 
 
 def ccd_command(ssh_connection, cmd: str, timeout: int = 300) -> str:
+    total_output.append(cmd)
     print("executing:", cmd)
     ssh_connection.expect_exact(ssh_connection.buffer)
     ssh_connection.sendline(cmd)
@@ -169,6 +171,14 @@ ssh_conn = get_ssh_connection_pexpect_with_port(ssh_yang_host, cred, port=yang_p
 
 device_type_execution(content_tac)
 device_type_tac_execution(content_tac)
+#print(total_output)
 device_type_group_execution(content_tac)
-for i in total_output:
-    print(i)
+
+current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+str_current_datetime = str(current_datetime)
+file_name = "tac_log"+str_current_datetime+".txt"
+file = open(file_name,'w')
+for item in total_output:
+    file.write(item+"\n")
+file.close()
+        
