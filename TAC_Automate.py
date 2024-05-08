@@ -1,5 +1,6 @@
 from pexpect import pxssh
 import pandas as pd
+import logging
 from datetime import datetime
 ssh_yang_host = "127.0.0.1"
 yang_port = 2222
@@ -12,6 +13,17 @@ df = pd.read_csv('Book_sample.csv')
 tac_frame = df[["TAC", "Manufacturer", "Marketingname"]]
 new_df = tac_frame[tac_frame["Manufacturer"]=="Apple"]
 content_tac = new_df.set_index('TAC')['Marketingname'].to_dict()
+
+logging.basicConfig(
+    level="DEBUG",
+    format="%(asctime)s - %(name)s - [ %(message)s ]",
+    datefmt='%d-%b-%y %H:%M:%S',
+    force=True,
+    handlers=[
+        logging.FileHandler("debug.log"),
+        logging.StreamHandler()
+    ])
+logger = logging.getLogger('urbanGUI')
 
 def get_ssh_connection_pexpect_with_port(host: str, ssh_credentials: dict, port=22):
     ssh_client = pxssh.pxssh(options={"StrictHostKeyChecking": "no", "UserKnownHostsFile": "/dev/null"})
@@ -35,6 +47,7 @@ def device_type_get(device_type):
     if "element does not exist" in out:
         return True
     else:
+        logging.debug(f"{device_type} is available")
         return False
 
 
@@ -62,6 +75,7 @@ def device_type_tac_get(device_type,tac):
     if "element does not exist" in out:
         return True
     else:
+        logging.debug(f"{device_type} {tac} available")
         return False
 
 
@@ -89,6 +103,7 @@ def device_type_group_get(device_type,device_group):
     if "element does not exist" in out:
         return True
     else:
+        logging.debug(f"{device_type} {device_group} available")
         return False
 
 
