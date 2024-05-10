@@ -132,6 +132,8 @@ def device_type_execution(content_tac):
     for i in x:
         print("start")
         print(i,"loop CONTENT")
+        if config_mode_check():
+            config_mode_exit()
         y=device_type_get(i)
         print(y)
         print("stop")
@@ -150,6 +152,8 @@ def device_type_tac_execution(content_tac):
     for tac,device_name in content_tac.items():
         print("start")
         print(device_name,"loop CONTENT")
+        if config_mode_check():
+            config_mode_exit()
         y=device_type_tac_get(device_name,tac)
         print(y)
         print("stop")
@@ -168,6 +172,8 @@ def device_type_group_execution(content_tac):
     for device_name in content_tac.values():
         print("start")
         print(device_name,"loop CONTENT")
+        if config_mode_check():
+            config_mode_exit()
         y=device_type_group_get(device_name,device_group)
         print(y)
         print("stop")
@@ -181,6 +187,21 @@ def device_type_group_execution(content_tac):
             print("++++++++++++++++++++++++++")
         else:
             print("Available")
+
+def config_mode_check():
+    out = ccd_command(ssh_conn, f"", timeout=yang_timeout)
+    if "config" in out:
+        return True
+    else:
+        return False
+
+def config_mode_exit():
+    out = ccd_command(ssh_conn, f"exit", timeout=yang_timeout)
+    if "Uncommitted changes found" in out:
+        out = ccd_command(ssh_conn, f"no", timeout=yang_timeout)
+    return
+
+
 
 ssh_conn = get_ssh_connection_pexpect_with_port(ssh_yang_host, cred, port=yang_port)
 
