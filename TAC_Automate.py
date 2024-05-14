@@ -217,4 +217,5 @@ file = open(file_name,'w')
 for item in total_output:
     file.write(item+"\n")
 file.close()
-        
+if not ssh_conn is None:
+ ssh_conn.logout()        
