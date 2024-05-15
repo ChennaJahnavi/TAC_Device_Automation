@@ -6,17 +6,9 @@ ssh_yang_host = "127.0.0.1"
 yang_port = 2222
 cred = {"username": "ejahnavi", "password": "Pa$$w0rd5pcc02x*d"}
 yang_timeout=5
-device_group="ACME"
-total_output=[]
-#content_tac={35016964: "IPHONE4S", 35016974: "IPHONE3G", 36016974: "IPHONE15"}
-df = pd.read_csv('Book_sample.csv')
-tac_frame = df[["TAC", "Manufacturer", "Marketingname"]]
-new_df = tac_frame[tac_frame["Manufacturer"]=="Apple"]
-content_tac = new_df.set_index('TAC')['Marketingname'].to_dict()
-
 logging.basicConfig(
     level="DEBUG",
-    format="%(asctime)s - %(name)s - [ %(message)s ]",
+    format="%(asctime)s - %(levelname)s - [ %(message)s ]",
     datefmt='%d-%b-%y %H:%M:%S',
     force=True,
     handlers=[
@@ -24,6 +16,25 @@ logging.basicConfig(
         logging.StreamHandler()
     ])
 logger = logging.getLogger('urbanGUI')
+
+device_group="ACME"
+total_output=[]
+
+#content_tac={35016964: "IPHONE4S", 35016974: "IPHONE3G", 36016974: "IPHONE15"}
+df = pd.read_csv('Book_Sample_updated.csv')
+tac_frame = df[["TAC", "Manufacturer", "Marketingname"]]
+#new_df = tac_frame[tac_frame["Manufacturer"]=="Apple"]
+
+new_df =tac_frame[(tac_frame['Manufacturer'] == 'Apple') & (tac_frame['TAC'].astype(str).str.len()==8)]
+new_df =new_df[(new_df['Manufacturer'] == 'Apple') & (new_df['Marketingname'].str.len()<=32)]
+
+abnormal_entities=tac_frame[(tac_frame['Manufacturer'] == 'Apple') & ((tac_frame['TAC'].astype(str).str.len()!=8) | (tac_frame['Marketingname'].str.len()>32))]
+content_tac = new_df.set_index('TAC')['Marketingname'].to_dict()
+
+abnormal_tac=abnormal_entities.set_index('TAC')['Marketingname'].to_dict()
+for k, v in abnormal_tac.items():
+    logging.error(f"{k}, {v} abnormality in any of this entity")
+
 
 def get_ssh_connection_pexpect_with_port(host: str, ssh_credentials: dict, port=22):
     ssh_client = pxssh.pxssh(options={"StrictHostKeyChecking": "no", "UserKnownHostsFile": "/dev/null"})
@@ -218,4 +229,6 @@ for item in total_output:
     file.write(item+"\n")
 file.close()
 if not ssh_conn is None:
- ssh_conn.logout()        
+ ssh_conn.logout()
+
+
