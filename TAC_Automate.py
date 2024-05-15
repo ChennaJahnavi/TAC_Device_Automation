@@ -1,3 +1,5 @@
+import sys
+import pexpect
 from pexpect import pxssh
 import pandas as pd
 import logging
@@ -45,10 +47,17 @@ def get_ssh_connection_pexpect_with_port(host: str, ssh_credentials: dict, port=
 def ccd_command(ssh_connection, cmd: str, timeout: int = 300) -> str:
     total_output.append(cmd)
     print("executing:", cmd)
-    ssh_connection.expect_exact(ssh_connection.buffer)
-    ssh_connection.sendline(cmd)
-    ssh_connection.prompt(timeout)
-    ccd_command_out = ssh_connection.before.decode("utf-8").split("\n", 1)[-1].rstrip()
+    try:
+        ssh_connection.expect_exact(ssh_connection.buffer)
+        ssh_connection.sendline(cmd)
+        ssh_connection.prompt(timeout)
+        ccd_command_out = ssh_connection.before.decode("utf-8").split("\n", 1)[-1].rstrip()
+    except pexpect.exceptions.EOF:
+        print('exceptions.EOF')
+        sys.exit()
+    except pexpect.pxssh.ExceptionPxssh:
+        print('ExceptionPxssh')
+        sys.exit()
     total_output.append(ccd_command_out)
     print("output:", ccd_command_out)
     return ccd_command_out
@@ -213,8 +222,11 @@ def config_mode_exit():
     return
 
 
-
-ssh_conn = get_ssh_connection_pexpect_with_port(ssh_yang_host, cred, port=yang_port)
+try:
+    ssh_conn = get_ssh_connection_pexpect_with_port(ssh_yang_host, cred, port=yang_port)
+except pexpect.pxssh.ExceptionPxssh:
+    logging.error(f'could not establish connection to host {ssh_yang_host}')
+    sys.exit()
 
 device_type_execution(content_tac)
 device_type_tac_execution(content_tac)
