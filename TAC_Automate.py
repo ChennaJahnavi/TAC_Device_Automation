@@ -1,4 +1,5 @@
 import sys
+import re
 import pexpect
 from pexpect import pxssh
 import pandas as pd
@@ -21,6 +22,9 @@ logger = logging.getLogger('urbanGUI')
 
 device_group="ACME"
 total_output=[]
+node = {}
+freq_node_devices = {}
+
 
 #content_tac={35016964: "IPHONE4S", 35016974: "IPHONE3G", 36016974: "IPHONE15"}
 df = pd.read_csv('Book_Sample_updated.csv')
@@ -146,6 +150,43 @@ def device_type_group_put(device_type,device_group):
        #out=None
        #sys.exit(-1)
 
+def Only_TAC_delete(TAC,device_type):
+    out = ccd_command(ssh_conn, f"config", timeout=yang_timeout)
+    out = ccd_command(ssh_conn, f"no mm ue-device-type-imei-tac {device_type} {TAC}", timeout=yang_timeout)
+    out = ccd_command(ssh_conn, f"commit", timeout=yang_timeout)
+    if "Proceed?" in out:
+        out = ccd_command(ssh_conn, f"yes", timeout=yang_timeout)
+        #out = ccd_command(ssh_conn, f"exit", timeout=yang_timeout)
+    if "Commit complete" in out:
+        print("group created successfully")
+    out = ccd_command(ssh_conn, f"exit", timeout=yang_timeout)
+    # out = ccd_command(ssh_conn, f"no",timeout=yang_timeout)
+    return
+    # else:
+    # print("Error in creating group")
+    # out=None
+    # sys.exit(-1)
+
+
+def ALL_TAC_delete(TAC,device_type):
+    out = ccd_command(ssh_conn, f"config", timeout=yang_timeout)
+    out = ccd_command(ssh_conn, f"no mm ue-device-type {device_type}", timeout=yang_timeout)
+    out = ccd_command(ssh_conn, f"no mm ue-device-type-imei-tac {device_type} {TAC}", timeout=yang_timeout)
+    out = ccd_command(ssh_conn, f"no mm ue-dg-device-type {device_group} {device_type}", timeout=yang_timeout)
+    out = ccd_command(ssh_conn, f"commit", timeout=yang_timeout)
+    if "Proceed?" in out:
+        out = ccd_command(ssh_conn, f"yes", timeout=yang_timeout)
+        #out = ccd_command(ssh_conn, f"exit", timeout=yang_timeout)
+    if "Commit complete" in out:
+        print("group created successfully")
+    out = ccd_command(ssh_conn, f"exit", timeout=yang_timeout)
+    # out = ccd_command(ssh_conn, f"no",timeout=yang_timeout)
+    return
+    # else:
+    # print("Error in creating group")
+    # out=None
+    # sys.exit(-1)
+
 
 def device_type_execution(content_tac):
     x = content_tac.values()
@@ -208,6 +249,59 @@ def device_type_group_execution(content_tac):
         else:
             print("Available")
 
+def current_Tac_in_node():
+    print(" A list of all the TAC present in node")
+    out = ccd_command(ssh_conn, f"show running-config mm ue-device-type-imei-tac", timeout=yang_timeout)
+    foo = out
+    matches = re.findall(r"mm\sue-device-type-imei-tac\s\w+\s\d{8}", foo)
+
+    # print(matches)
+
+    device_tac = [re.sub('mm ue-device-type-imei-tac ', '', i) for i in matches]
+    # print(device_tac)
+    for i in device_tac:
+        if i:
+            li = re.split('\s', i)
+            if li[0] not in freq_node_devices:
+                freq_node_devices[li[0]] = 1
+            else:
+                freq_node_devices[li[0]] += 1
+
+    for i in device_tac:
+        if i:
+            jaan = re.split('\s', i)
+            if len(jaan) == 2 and jaan[1].isnumeric():
+                jaan[1] = int(jaan[1])
+                node[jaan[1]] = jaan[0]
+                # if jaan[1] not in node:
+                #     node[jaan[1]] = []
+                #     node[jaan[1]].append(jaan[0])
+                # else:
+                #     node[jaan[1]].append(jaan[0])
+            else:
+                print("Unproccesable Element found" + i)
+                # logging.error('%s Unproccesable Element found', i)
+        else:
+            print("Unproccesable Element found" + i)
+
+
+def Tac_delete_execution(content_tac, node):
+    for k, v in content_tac.items():
+        print(k, v)
+        if k in node and node[k] == content_tac[k]:
+            node.pop(k)
+    print(node)
+    print(freq_node_devices)
+
+    for k, v in node.items():
+        if freq_node_devices[v] > 1:
+            Only_TAC_delete(k, v)
+            freq_node_devices[v] -= 1
+            if freq_node_devices[v] == 0:
+                freq_node_devices.pop(v)
+        else:
+            ALL_TAC_delete(k, v)
+
 def config_mode_check():
     out = ccd_command(ssh_conn, f"", timeout=yang_timeout)
     if "config" in out:
@@ -228,6 +322,8 @@ except pexpect.pxssh.ExceptionPxssh:
     logging.error(f'could not establish connection to host {ssh_yang_host}')
     sys.exit()
 
+current_Tac_in_node()
+Tac_delete_execution(content_tac, node)
 device_type_execution(content_tac)
 device_type_tac_execution(content_tac)
 #print(total_output)
@@ -242,5 +338,7 @@ for item in total_output:
 file.close()
 if not ssh_conn is None:
  ssh_conn.logout()
+
+
 
 
